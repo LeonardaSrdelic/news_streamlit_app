@@ -57,12 +57,22 @@ KEYWORD_PROFILES = {
 
 # RSS izvori hrvatskih portala; lako prosirivo.
 RSS_FEEDS = {
+    # Opći i vijesti
     "N1": "https://n1info.hr/feed/",
-    "Index": "https://www.index.hr/rss",
-    "Jutarnji": "https://www.jutarnji.hr/rss",
+    "Index Vijesti": "https://www.index.hr/rss/vijesti",
+    "Index Novac": "https://www.index.hr/rss/vijesti-novac",
+    "Jutarnji Vijesti": "http://www.jutarnji.hr/rss",
     "Vecernji": "https://www.vecernji.hr/rss",
     "Tportal": "https://www.tportal.hr/rss",
+    "24sata News": "https://www.24sata.hr/feeds/news.xml",
+    # Biznis/ekonomija
     "Poslovni": "https://www.poslovni.hr/feed",
+    "Lider": "https://lidermedia.hr/rss",
+    # Slobodna Dalmacija sekcije
+    "Slobodna Vijesti": "https://slobodnadalmacija.hr/feed/category/119",
+    "Slobodna Biznis": "https://slobodnadalmacija.hr/feed/category/244",
+    # HRT
+    "HRT Vijesti": "https://vijesti.hrt.hr/rss",
 }
 
 
