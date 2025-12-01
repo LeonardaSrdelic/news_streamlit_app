@@ -5,10 +5,13 @@ from datetime import date, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import List
+from urllib.parse import urljoin, urlparse
 
 import feedparser
 import pandas as pd
+import requests
 import streamlit as st
+from bs4 import BeautifulSoup
 from sqlalchemy import create_engine
 
 # Ako budemo ponovno trebali web/Serper modul, importi ostaju.
@@ -77,6 +80,12 @@ RSS_FEEDS = {
     "Vlada RH": "https://vlada.gov.hr/rss",
     "EU Komunikacije": "https://ec.europa.eu/commission/presscorner/home/en/rss.xml",
 }
+
+# Dodatne vladine/EU stranice (bez RSS) koje cemo scrapati za PDF/objave
+GOV_PAGES = [
+    "https://vlada.gov.hr/vijesti/8",
+    "https://vlada.gov.hr/istaknute-teme/odrzivi-razvoj/14969",
+]
 
 
 def parse_list(text: str) -> List[str]:
@@ -303,6 +312,46 @@ def presscut_score(
     return score if score > 0 else None
 
 
+def guess_pub_date_from_url(url: str) -> datetime:
+    """
+    Gruba heuristika za datume u URL-u vlade (npr. .../2025/Studeni/20_studenoga/...)
+    Ako ne uspije, vrati utcnow.
+    """
+    parsed = urlparse(url)
+    parts = [p for p in parsed.path.split("/") if p]
+    year = None
+    month = None
+    day = None
+
+    # mapiranje hrvatskih mjeseci
+    months = {
+        "sijecanj": 1, "veljaca": 2, "ozujak": 3, "travanj": 4, "svibanj": 5, "lipanj": 6,
+        "srpanj": 7, "kolovoz": 8, "rujan": 9, "listopad": 10, "studeni": 11, "prosinac": 12,
+    }
+
+    for p in parts:
+        if p.isdigit() and len(p) == 4 and p.startswith("20"):
+            year = int(p)
+        lower = p.lower()
+        if lower in months:
+            month = months[lower]
+        # dan iz recimo "20_studenoga"
+        if "_" in p or "-" in p:
+            for token in p.replace("-", "_").split("_"):
+                if token.isdigit():
+                    day = int(token)
+                    break
+
+    try:
+        if year and month and day:
+            return datetime(year, month, day)
+        if year and month:
+            return datetime(year, month, 1)
+    except Exception:
+        pass
+    return datetime.utcnow()
+
+
 def normalize_datetime(entry) -> datetime:
     if hasattr(entry, "published_parsed") and entry.published_parsed:
         return datetime.fromtimestamp(calendar.timegm(entry.published_parsed))
@@ -373,6 +422,69 @@ def search_rss_articles(
                     "source": source_name,
                     "published_at": pub_dt,
                     "summary": summary,
+                    "score": score,
+                }
+            )
+
+    results.sort(key=lambda x: (x["score"], x["published_at"]), reverse=True)
+    return results
+
+
+def search_gov_pages(
+    keywords: List[str],
+    date_from: date,
+    date_to: date,
+    must_have: List[str],
+    nice_to_have: List[str],
+    exclude: List[str],
+) -> List[dict]:
+    """
+    Jednostavan scrape vladinih stranica za linkove (posebno PDF) i presscut filtriranje.
+    """
+    results: List[dict] = []
+    ref_date = date_to
+
+    for base_url in GOV_PAGES:
+        try:
+            resp = requests.get(base_url, timeout=20)
+            resp.raise_for_status()
+        except Exception:
+            continue
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            full_url = urljoin(base_url, href)
+            title = a.get_text(strip=True) or full_url
+
+            # Fokus na pdf ili vijesti
+            if not full_url.lower().endswith(".pdf") and "vijesti" not in full_url:
+                continue
+
+            pub_dt = guess_pub_date_from_url(full_url)
+            if not (date_from <= pub_dt.date() <= date_to):
+                continue
+
+            score = presscut_score(
+                title=title,
+                summary="",
+                base_keywords=keywords,
+                must_have=must_have,
+                nice_to_have=nice_to_have,
+                exclude=exclude,
+                published_at=pub_dt,
+                ref_date=ref_date,
+            )
+            if score is None:
+                continue
+
+            results.append(
+                {
+                    "title": title,
+                    "link": full_url,
+                    "source": "Vlada/EU",
+                    "published_at": pub_dt,
+                    "summary": "",
                     "score": score,
                 }
             )
@@ -506,6 +618,25 @@ def render_rss_mode():
                     nice_to_have=nice_to_have_words,
                     exclude=exclude_words,
                 )
+
+                # Dodaj rezultate s vladinih/EU stranica (PDF/objave)
+                gov_articles = search_gov_pages(
+                    keywords=all_keywords,
+                    date_from=date_from,
+                    date_to=date_to,
+                    must_have=must_have_words,
+                    nice_to_have=nice_to_have_words,
+                    exclude=exclude_words,
+                )
+                if gov_articles:
+                    # izbjegni duplikate po linku
+                    seen = {a["link"] for a in articles}
+                    for g in gov_articles:
+                        if g["link"] not in seen:
+                            articles.append(g)
+                            seen.add(g["link"])
+
+                articles.sort(key=lambda x: (x["score"], x["published_at"]), reverse=True)
 
         if mode == "Dohvati svjeze iz RSS-a" and save_to_db and articles:
             try:
