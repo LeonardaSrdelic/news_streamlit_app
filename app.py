@@ -314,7 +314,8 @@ def presscut_score(
         score += hits_title * 2
         score += hits_summary * 1
 
-    if not must_have and not (base_hit or nice_hit):
+    # Striktno: ako nema obveznih, zahtijevaj barem jedan pogodak iz temeljnih.
+    if not must_have and not base_hit:
         return None
 
     age_days = (ref_date - published_at.date()).days
@@ -464,13 +465,20 @@ def search_gov_pages(
     exclude: List[str],
 ) -> List[dict]:
     """
-    Scrape vladinih stranica za linkove (posebno PDF) i presscut filtriranje.
+    Scrape vladinih stranica (s paginacijom) za linkove na vijesti/PDF i presscut filtriranje.
     """
     results: List[dict] = []
     ref_date = date_to
     seen_links = set()
 
-    for base_url in GOV_PAGES:
+    # proširi paginaciju za vlada.gov.hr vijesti (par stranica)
+    paginated_urls: List[str] = []
+    for base in GOV_PAGES:
+        paginated_urls.append(base)
+        for p in range(1, 6):
+            paginated_urls.append(f"{base}?page={p}")
+
+    for base_url in paginated_urls:
         try:
             resp = requests.get(base_url, timeout=20)
             resp.raise_for_status()
@@ -488,11 +496,12 @@ def search_gov_pages(
             seen_links.add(full_url)
 
             is_pdf = full_url.lower().endswith(".pdf")
-            # Fokus na vlada.gov.hr vijesti + PDF; izbjegni navigaciju/home/kratke naslove
+            # dozvoli vlada.gov.hr vijesti ili UserDocsImages PDF
             if ("vlada.gov.hr" not in full_url) and not is_pdf:
                 continue
-            if not is_pdf and "/vijesti/" not in full_url:
-                continue
+            if not is_pdf:
+                if ("/vijesti/" not in full_url) and ("UserDocsImages" not in full_url):
+                    continue
             if len(title) < 5:
                 continue
             if full_url.rstrip("/") in {"https://vlada.gov.hr", "https://vlada.gov.hr/"}:
@@ -541,7 +550,7 @@ def search_gov_pages(
                     "link": full_url,
                     "source": "Vlada/EU",
                     "published_at": pub_dt,
-                    "summary": "",
+                    "summary": summary,
                     "score": score,
                 }
             )
