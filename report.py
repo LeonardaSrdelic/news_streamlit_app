@@ -14,6 +14,8 @@ from bs4 import BeautifulSoup
 from pypdf import PdfReader
 
 MIN_SCORE = 23
+MIN_SCORE_MEDIA = 18
+MIN_SCORE_GOV = 23
 
 
 # RSS izvori (isti koncept kao u app.py; prosiri po potrebi)
@@ -104,6 +106,23 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
         "privatizacija",
         "upravljanje drzavnim poduzecima",
         "reforma javnih poduzeca",
+    ],
+    "Financijska trzista i kapital": [
+        "crobex",
+        "crobex10",
+        "zagrebacka burza",
+        "burza",
+        "dionice",
+        "dionicka trzista",
+        "trziste kapitala",
+        "obveznice",
+        "prinosi obveznica",
+        "prinos",
+        "trading",
+        "likvidnost trzista",
+        "indeksi",
+        "zse",
+        "ipo",
     ],
     "Digitalizacija i fintech": [
         "digitalizacija",
@@ -606,8 +625,13 @@ def main():
                 seen.add(g["link"])
         articles.sort(key=lambda x: (x["score"], x["published"]), reverse=True)
 
-    # minimalni score filter
-    articles = [a for a in articles if a.get("score", 0) >= MIN_SCORE]
+    # minimalni score filter (razlicito za Vlada/EU i medije)
+    filtered = []
+    for a in articles:
+        thr = MIN_SCORE_GOV if a.get("source") == "Vlada/EU" else MIN_SCORE_MEDIA
+        if a.get("score", 0) >= thr:
+            filtered.append(a)
+    articles = filtered
 
     html = build_html_report(articles, date_from, date_to)
     send_email(html, subject="Dnevni pregled vijesti")

@@ -24,7 +24,8 @@ from newsmonitor.utils import estimate_reading_time
 
 DB_PATH = "articles.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
-MIN_SCORE = 23  # minimalni score za prikaz/spremanje
+MIN_SCORE_MEDIA = 18  # minimalni score za medije
+MIN_SCORE_GOV = 23    # minimalni score za Vlada/EU izvore
 
 # Tematski profili za presscut stil praćenja vijesti.
 KEYWORD_PROFILES = {
@@ -90,6 +91,23 @@ KEYWORD_PROFILES = {
         "privatizacija",
         "upravljanje drzavnim poduzecima",
         "reforma javnih poduzeca",
+    ],
+    "Financijska trzista i kapital": [
+        "crobex",
+        "crobex10",
+        "zagrebacka burza",
+        "burza",
+        "dionice",
+        "dionicka trzista",
+        "trziste kapitala",
+        "obveznice",
+        "prinosi obveznica",
+        "prinos",
+        "trading",
+        "likvidnost trzista",
+        "indeksi",
+        "zse",
+        "ipo",
     ],
     "Digitalizacija i fintech": [
         "digitalizacija",
@@ -860,13 +878,23 @@ def render_rss_mode():
 
         if mode == "Dohvati svjeze iz RSS-a" and save_to_db and articles:
             try:
-                save_articles_to_db([a for a in articles if a.get("score", 0) >= MIN_SCORE])
+                filtered_for_save = []
+                for a in articles:
+                    thr = MIN_SCORE_GOV if a.get("source") == "Vlada/EU" else MIN_SCORE_MEDIA
+                    if a.get("score", 0) >= thr:
+                        filtered_for_save.append(a)
+                save_articles_to_db(filtered_for_save)
                 st.success("Rezultati spremljeni u SQLite bazu.")
             except Exception as exc:
                 st.warning(f"Nisam uspjela spremiti rezultate: {exc}")
 
-        # filtriraj prema minimalnom score-u
-        articles = [a for a in articles if a.get("score", 0) >= MIN_SCORE]
+        # filtriraj prema minimalnom score-u (razliciti prag za gov/medije)
+        filtered = []
+        for a in articles:
+            thr = MIN_SCORE_GOV if a.get("source") == "Vlada/EU" else MIN_SCORE_MEDIA
+            if a.get("score", 0) >= thr:
+                filtered.append(a)
+        articles = filtered
 
         st.subheader(f"Pronađeno članaka: {len(articles)}")
 
