@@ -1,5 +1,6 @@
 import os
 import smtplib
+import re
 from datetime import date, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -231,6 +232,15 @@ def guess_pub_date_from_url(url: str) -> datetime:
                 if token.isdigit():
                     day = int(token)
                     break
+    if not (year and month and day):
+        m = re.search(r"(20\d{2})[-_/](\d{1,2})[-_/](\d{1,2})", url)
+        if m:
+            try:
+                year = int(m.group(1))
+                month = int(m.group(2))
+                day = int(m.group(3))
+            except Exception:
+                pass
     try:
         if year and month and day:
             return datetime(year, month, day)
@@ -238,7 +248,7 @@ def guess_pub_date_from_url(url: str) -> datetime:
             return datetime(year, month, 1)
     except Exception:
         pass
-    return datetime.utcnow()
+    return datetime.min
 
 
 def extract_text_from_html(html: str) -> str:

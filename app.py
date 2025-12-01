@@ -1,6 +1,7 @@
 import calendar
 import os
 import smtplib
+import re
 from datetime import date, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -388,7 +389,7 @@ def presscut_score(
 def guess_pub_date_from_url(url: str) -> datetime:
     """
     Gruba heuristika za datume u URL-u vlade (npr. .../2025/Studeni/20_studenoga/...)
-    Ako ne uspije, vrati utcnow.
+    Ako ne uspije, vrati datetime.min (pa ce biti izbacen po filteru).
     """
     parsed = urlparse(url)
     parts = [p for p in parsed.path.split("/") if p]
@@ -415,6 +416,17 @@ def guess_pub_date_from_url(url: str) -> datetime:
                     day = int(token)
                     break
 
+    # Probaj regex YYYY-MM-DD u cijelom URL-u
+    if not (year and month and day):
+        m = re.search(r"(20\d{2})[-_/](\d{1,2})[-_/](\d{1,2})", url)
+        if m:
+            try:
+                year = int(m.group(1))
+                month = int(m.group(2))
+                day = int(m.group(3))
+            except Exception:
+                pass
+
     try:
         if year and month and day:
             return datetime(year, month, day)
@@ -422,7 +434,7 @@ def guess_pub_date_from_url(url: str) -> datetime:
             return datetime(year, month, 1)
     except Exception:
         pass
-    return datetime.utcnow()
+    return datetime.min
 
 
 def extract_text_from_html(html: str) -> str:
