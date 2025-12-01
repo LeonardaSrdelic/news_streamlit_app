@@ -256,7 +256,8 @@ def guess_pub_date_from_url(url: str) -> datetime:
             return datetime(year, month, 1)
     except Exception:
         pass
-    return datetime.min
+    # fallback na danasnji datum
+    return datetime.utcnow()
 
 
 def extract_text_from_html(html: str) -> str:
