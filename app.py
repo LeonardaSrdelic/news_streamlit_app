@@ -83,14 +83,6 @@ KEYWORD_PROFILES = {
         "emisije staklenickih plinova",
         "ugljicni otisak",
     ],
-    "Subvencije i drzavne potpore": [
-        "subvencije",
-        "drzavne potpore",
-        "potpore poduzecima",
-        "nacionalni plan oporavka",
-        "europski fondovi",
-        "eu fondovi",
-    ],
     "Ekonomske reforme i drzavna poduzeca": [
         "drzavna poduzeca",
         "drzavno poduzece",
