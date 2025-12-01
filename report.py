@@ -398,6 +398,7 @@ def fetch_gov_articles(
             if lower_title in {
                 "vijesti",
                 "pristupacnost",
+                "pristupačnost",
                 "preskoci na glavni sadrzaj",
                 "preskoci na glavni sadržaj",
                 "istaknute teme",
@@ -452,6 +453,8 @@ def fetch_gov_articles(
                 ref_date=ref_date,
             )
             if score is None:
+                continue
+            if "pronadeno 30114 vijesti" in summary.lower() or "filtrirajte vijesti" in summary.lower():
                 continue
 
             results.append(
