@@ -264,7 +264,7 @@ def build_html_report(articles, date_from, date_to, selected_profiles, all_keywo
                 html_parts.append("<p>" + "  |  ".join(meta_items) + "</p>")
 
             if summary:
-                html_parts.append(f"<p>{summarize(summary, limit=80)}</p>")
+                html_parts.append(f"<p>{summarize(summary, limit=60)}</p>")
 
             html_parts.append("</li>")
         html_parts.append("</ol>")
@@ -455,6 +455,16 @@ def extract_text_from_html(html: str) -> str:
     return " ".join(words)
 
 
+def clean_html_text(text: str) -> str:
+    """Makni HTML tagove/IMG iz sažetaka."""
+    if not text:
+        return ""
+    soup = BeautifulSoup(text, "html.parser")
+    for img in soup.find_all("img"):
+        img.decompose()
+    return soup.get_text(separator=" ", strip=True)
+
+
 def normalize_datetime(entry) -> datetime:
     if hasattr(entry, "published_parsed") and entry.published_parsed:
         return datetime.fromtimestamp(calendar.timegm(entry.published_parsed))
@@ -500,7 +510,8 @@ def search_rss_articles(
                 continue
 
             title = getattr(entry, "title", "") or ""
-            summary = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
+            summary_raw = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
+            summary = clean_html_text(summary_raw)
 
             score = presscut_score(
                 title=title,

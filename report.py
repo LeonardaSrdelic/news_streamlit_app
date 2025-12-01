@@ -269,6 +269,15 @@ def extract_text_from_html(html: str) -> str:
     return " ".join(words)
 
 
+def clean_html_text(text: str) -> str:
+    if not text:
+        return ""
+    soup = BeautifulSoup(text, "html.parser")
+    for img in soup.find_all("img"):
+        img.decompose()
+    return soup.get_text(separator=" ", strip=True)
+
+
 def fetch_articles(
     date_from: date,
     date_to: date,
@@ -289,7 +298,8 @@ def fetch_articles(
                 continue
 
             title = getattr(entry, "title", "") or ""
-            summary = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
+            summary_raw = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
+            summary = clean_html_text(summary_raw)
 
             score = presscut_score(
                 title=title,
@@ -455,7 +465,7 @@ def fetch_gov_articles(
 
 
 def build_html_report(articles: List[dict], date_from: date, date_to: date) -> str:
-    def summarize(text: str, limit: int = 80) -> str:
+    def summarize(text: str, limit: int = 60) -> str:
         words = (text or "").split()
         if len(words) <= limit:
             return " ".join(words)
