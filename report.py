@@ -112,6 +112,14 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
         "tecaj eura",
         "europski semestar",
     ],
+    "Ekonomske reforme i drzavna poduzeca": [
+        "drzavna poduzeca",
+        "drzavno poduzece",
+        "javni sektor reforme",
+        "privatizacija",
+        "upravljanje drzavnim poduzecima",
+        "reforma javnih poduzeca",
+    ],
     "Geopolitika i sigurnost": [
         "geopolitika",
         "geopoliticko okruzenje",
@@ -369,7 +377,13 @@ def fetch_gov_articles(
             seen_links.add(full_url)
 
             lower_title = title.lower()
-            if lower_title in {"vijesti", "pristupacnost", "preskoci na glavni sadrzaj"}:
+            if lower_title in {
+                "vijesti",
+                "pristupacnost",
+                "preskoci na glavni sadrzaj",
+                "preskoci na glavni sadržaj",
+                "istaknute teme",
+            }:
                 continue
 
             is_pdf = full_url.lower().endswith(".pdf")
