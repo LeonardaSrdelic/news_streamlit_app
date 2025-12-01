@@ -488,8 +488,14 @@ def search_gov_pages(
             seen_links.add(full_url)
 
             is_pdf = full_url.lower().endswith(".pdf")
-            # Fokus na PDF i vijesti na vlada.gov.hr
+            # Fokus na vlada.gov.hr vijesti + PDF; izbjegni navigaciju/home/kratke naslove
             if ("vlada.gov.hr" not in full_url) and not is_pdf:
+                continue
+            if not is_pdf and "/vijesti/" not in full_url:
+                continue
+            if len(title) < 5:
+                continue
+            if full_url.rstrip("/") in {"https://vlada.gov.hr", "https://vlada.gov.hr/"}:
                 continue
 
             pub_dt = guess_pub_date_from_url(full_url)
