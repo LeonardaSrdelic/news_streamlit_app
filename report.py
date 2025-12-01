@@ -101,6 +101,22 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
         "tecaj eura",
         "europski semestar",
     ],
+    "Geopolitika i sigurnost": [
+        "geopolitika",
+        "geopoliticko okruzenje",
+        "rat",
+        "rat u ukrajini",
+        "ukrajina",
+        "rusija",
+        "sankcije",
+        "nato",
+        "europska sigurnost",
+        "donald trump",
+        "trump",
+        "sjedinjene drzave",
+        "sad izbori",
+        "globalna sigurnost",
+    ],
 }
 
 GOV_PAGES = [

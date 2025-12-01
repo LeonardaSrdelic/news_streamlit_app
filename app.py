@@ -88,6 +88,22 @@ KEYWORD_PROFILES = {
         "tecaj eura",
         "europski semestar",
     ],
+    "Geopolitika i sigurnost": [
+        "geopolitika",
+        "geopoliticko okruzenje",
+        "rat",
+        "rat u ukrajini",
+        "ukrajina",
+        "rusija",
+        "sankcije",
+        "nato",
+        "europska sigurnost",
+        "donald trump",
+        "trump",
+        "sjedinjene drzave",
+        "sad izbori",
+        "globalna sigurnost",
+    ],
 }
 
 # RSS izvori hrvatskih portala; lako prosirivo.
