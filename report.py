@@ -539,7 +539,11 @@ def send_email(html_body: str, subject: str):
 
 def main():
     date_to = date.today()
-    date_from = date_to - timedelta(days=1)
+    # Ponedjeljkom pokrij petak-subotu-nedjelju-ponedjeljak, ostale dane zadnjih 24h
+    if date_to.weekday() == 0:  # Monday
+        date_from = date_to - timedelta(days=3)
+    else:
+        date_from = date_to - timedelta(days=1)
 
     base_keywords: List[str] = []
     for words in KEYWORD_PROFILES.values():
