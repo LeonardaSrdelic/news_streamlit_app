@@ -13,7 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
 
-MIN_SCORE = 15
+MIN_SCORE = 23
 
 
 # RSS izvori (isti koncept kao u app.py; prosiri po potrebi)
@@ -67,12 +67,14 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
         "minimalna placa",
         "zaposljavanje",
     ],
-    "Klimatske politike i energija": [
+    "Klimatske promjene, kruzna ekonomija i energija": [
         "klimatska politika",
+        "klimatske promjene",
         "co2",
         "porez na ugljik",
         "ugljicni porez",
         "obnovljivi izvori",
+        "obnovljiva energija",
         "energija",
         "energetska tranzicija",
         "odrzivi razvoj",
@@ -82,6 +84,12 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
         "niskoemisijski rast",
         "klimatska neutralnost",
         "cop",
+        "kruzna ekonomija",
+        "plava ekonomija",
+        "bioraznolikost",
+        "dekarbonizacija",
+        "emisije staklenickih plinova",
+        "ugljicni otisak",
     ],
     "Subvencije i drzavne potpore": [
         "subvencije",

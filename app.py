@@ -24,7 +24,7 @@ from newsmonitor.utils import estimate_reading_time
 
 DB_PATH = "articles.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
-MIN_SCORE = 15  # minimalni score za prikaz/spremanje
+MIN_SCORE = 23  # minimalni score za prikaz/spremanje
 
 # Tematski profili za presscut stil praćenja vijesti.
 KEYWORD_PROFILES = {
@@ -53,12 +53,14 @@ KEYWORD_PROFILES = {
         "minimalna placa",
         "zaposljavanje",
     ],
-    "Klimatske politike i energija": [
+    "Klimatske promjene, kruzna ekonomija i energija": [
         "klimatska politika",
+        "klimatske promjene",
         "co2",
         "porez na ugljik",
         "ugljicni porez",
         "obnovljivi izvori",
+        "obnovljiva energija",
         "energija",
         "energetska tranzicija",
         "odrzivi razvoj",
@@ -68,6 +70,12 @@ KEYWORD_PROFILES = {
         "niskoemisijski rast",
         "klimatska neutralnost",
         "cop",
+        "kruzna ekonomija",
+        "plava ekonomija",
+        "bioraznolikost",
+        "dekarbonizacija",
+        "emisije staklenickih plinova",
+        "ugljicni otisak",
     ],
     "Subvencije i drzavne potpore": [
         "subvencije",
