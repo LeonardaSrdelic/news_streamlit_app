@@ -23,6 +23,7 @@ from newsmonitor.utils import estimate_reading_time
 
 DB_PATH = "articles.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
+MIN_SCORE = 8  # minimalni score za prikaz/spremanje
 
 # Tematski profili za presscut stil praćenja vijesti.
 KEYWORD_PROFILES = {
@@ -709,8 +710,8 @@ def render_rss_mode():
 
     exclude_text = st.text_input(
         "Isključene riječi (ako se pojave, članak se izbacuje)",
-        value="sport, nogomet, rukomet",
-        help="Koristi za filtriranje sportskih i sličnih nerelevantnih vijesti.",
+        value="sport, nogomet, rukomet, nesreca, prometna, ubojstvo, kriminal, celebrity, showbiz, moda, lifestyle, seks",
+        help="Koristi za filtriranje sportskih, crne kronike i sličnih nerelevantnih vijesti.",
     )
 
     must_have_words = parse_list(must_have_text)
@@ -793,10 +794,13 @@ def render_rss_mode():
 
         if mode == "Dohvati svjeze iz RSS-a" and save_to_db and articles:
             try:
-                save_articles_to_db(articles)
+                save_articles_to_db([a for a in articles if a.get("score", 0) >= MIN_SCORE])
                 st.success("Rezultati spremljeni u SQLite bazu.")
             except Exception as exc:
                 st.warning(f"Nisam uspjela spremiti rezultate: {exc}")
+
+        # filtriraj prema minimalnom score-u
+        articles = [a for a in articles if a.get("score", 0) >= MIN_SCORE]
 
         st.subheader(f"Pronađeno članaka: {len(articles)}")
 

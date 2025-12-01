@@ -12,6 +12,8 @@ import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
 
+MIN_SCORE = 8
+
 
 # RSS izvori (isti koncept kao u app.py; prosiri po potrebi)
 # Širi popis iz app.py (HR portali + HRT + Slobodna)
@@ -536,6 +538,9 @@ def main():
                 articles.append(g)
                 seen.add(g["link"])
         articles.sort(key=lambda x: (x["score"], x["published"]), reverse=True)
+
+    # minimalni score filter
+    articles = [a for a in articles if a.get("score", 0) >= MIN_SCORE]
 
     html = build_html_report(articles, date_from, date_to)
     send_email(html, subject="Dnevni pregled vijesti")
