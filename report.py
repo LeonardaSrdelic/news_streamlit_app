@@ -12,7 +12,7 @@ import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
 
-MIN_SCORE = 8
+MIN_SCORE = 15
 
 
 # RSS izvori (isti koncept kao u app.py; prosiri po potrebi)

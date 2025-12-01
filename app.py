@@ -23,7 +23,7 @@ from newsmonitor.utils import estimate_reading_time
 
 DB_PATH = "articles.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
-MIN_SCORE = 8  # minimalni score za prikaz/spremanje
+MIN_SCORE = 15  # minimalni score za prikaz/spremanje
 
 # Tematski profili za presscut stil praćenja vijesti.
 KEYWORD_PROFILES = {
