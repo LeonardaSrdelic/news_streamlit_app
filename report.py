@@ -88,6 +88,19 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
         "europski fondovi",
         "eu fondovi",
     ],
+    "Europodrucje i monetarna politika": [
+        "europodrucje",
+        "eurozona",
+        "europska sredisnja banka",
+        "esb",
+        "ecb",
+        "monetarna politika",
+        "kamatne stope",
+        "inflacija",
+        "euribor",
+        "tecaj eura",
+        "europski semestar",
+    ],
 }
 
 GOV_PAGES = [

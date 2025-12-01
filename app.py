@@ -75,6 +75,19 @@ KEYWORD_PROFILES = {
         "europski fondovi",
         "eu fondovi",
     ],
+    "Europodrucje i monetarna politika": [
+        "europodrucje",
+        "eurozona",
+        "europska sredisnja banka",
+        "esb",
+        "ecb",
+        "monetarna politika",
+        "kamatne stope",
+        "inflacija",
+        "euribor",
+        "tecaj eura",
+        "europski semestar",
+    ],
 }
 
 # RSS izvori hrvatskih portala; lako prosirivo.
@@ -157,63 +170,78 @@ def load_rss_from_db(date_from: date, date_to: date, sources: List[str]) -> List
 
 
 def build_html_report(articles, date_from, date_to, selected_profiles, all_keywords):
-    """Gradnja jednostavnog HTML izvjestaja od clanaka."""
+    """Gradnja HTML izvještaja grupiranog po tematskim profilima."""
     period_str = f"{date_from.isoformat()} do {date_to.isoformat()}"
     profiles_str = ", ".join(selected_profiles) if selected_profiles else "bez profila"
 
-    html_parts = []
+    def summarize(text: str, limit: int = 120) -> str:
+        words = (text or "").split()
+        if len(words) <= limit:
+            return " ".join(words)
+        return " ".join(words[:limit]) + " …"
 
+    # grupiranje po profilu na temelju prisutnosti ključnih riječi
+    buckets = {p: [] for p in KEYWORD_PROFILES.keys()}
+    buckets["Ostalo"] = []
+
+    for art in articles:
+        text = (art.get("title", "") + " " + art.get("summary", "")).lower()
+        placed = False
+        for profile, kws in KEYWORD_PROFILES.items():
+            if any(k.lower() in text for k in kws):
+                buckets[profile].append(art)
+                placed = True
+        if not placed:
+            buckets["Ostalo"].append(art)
+
+    html_parts: List[str] = []
     html_parts.append("<html><body>")
     html_parts.append("<h2>Dnevni pregled vijesti</h2>")
     html_parts.append(f"<p>Razdoblje: {period_str}</p>")
     html_parts.append(f"<p>Profili: {profiles_str}</p>")
     html_parts.append(
-        "<p>Aktivne kljucne rijeci: "
+        "<p>Aktivne ključne riječi: "
         + ", ".join(sorted(set(all_keywords)))
         + "</p>"
     )
 
-    if not articles:
-        html_parts.append("<p>Nema pronadenih clanaka za zadane kriterije.</p>")
-        html_parts.append("</body></html>")
-        return "\n".join(html_parts)
+    total = sum(len(v) for v in buckets.values())
+    html_parts.append(f"<p>Ukupno članaka: {total}</p>")
 
-    html_parts.append("<hr>")
-    html_parts.append("<ol>")
+    for profile, items in buckets.items():
+        if not items:
+            continue
+        html_parts.append(f"<h3>{profile}</h3>")
+        html_parts.append("<ol>")
+        for art in items:
+            title = art.get("title", "")
+            link = art.get("link", "")
+            source = art.get("source", "")
+            published_at = art.get("published_at")
+            score = art.get("score", "")
+            summary = art.get("summary", "")
+            date_str = published_at.strftime("%Y-%m-%d %H:%M") if published_at else ""
 
-    for art in articles:
-        title = art.get("title", "")
-        link = art.get("link", "")
-        source = art.get("source", "")
-        published_at = art.get("published_at")
-        score = art.get("score", "")
-        summary = art.get("summary", "")
+            html_parts.append("<li>")
+            html_parts.append(f'<p><strong><a href="{link}">{title}</a></strong></p>')
+            meta_items = []
+            if source:
+                meta_items.append(f"Izvor: {source}")
+            if date_str:
+                meta_items.append(f"Objavljeno: {date_str}")
+            if score != "":
+                meta_items.append(f"Score: {score}")
+            if meta_items:
+                html_parts.append("<p>" + "  |  ".join(meta_items) + "</p>")
 
-        date_str = published_at.strftime("%Y-%m-%d %H:%M") if published_at else ""
+            if summary:
+                html_parts.append(f"<p>{summarize(summary, limit=80)}</p>")
 
-        html_parts.append("<li>")
-        html_parts.append(
-            f'<p><strong><a href="{link}">{title}</a></strong></p>'
-        )
-        meta_items = []
-        if source:
-            meta_items.append(f"Izvor: {source}")
-        if date_str:
-            meta_items.append(f"Objavljeno: {date_str}")
-        if score != "":
-            meta_items.append(f"Score: {score}")
-        if meta_items:
-            html_parts.append("<p>" + "  |  ".join(meta_items) + "</p>")
-
-        if summary:
-            html_parts.append(f"<p>{summary}</p>")
-
-        html_parts.append("</li>")
+            html_parts.append("</li>")
+        html_parts.append("</ol>")
         html_parts.append("<hr>")
 
-    html_parts.append("</ol>")
     html_parts.append("</body></html>")
-
     return "\n".join(html_parts)
 
 
