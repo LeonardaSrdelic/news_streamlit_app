@@ -27,6 +27,15 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
         "pdv",
         "proracun",
         "fiskalna politika",
+        "porezni prihodi",
+        "porezni rasterecenje",
+        "porezne olaksice",
+        "trosarine",
+        "doprinosi",
+        "proracunski deficit",
+        "proracunski prihodi",
+        "javne financije",
+        "fiskalna pravila",
     ],
     "Mirovine i socijalna politika": [
         "mirovinska reforma",
@@ -39,10 +48,18 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
     "Klimatske politike i energija": [
         "klimatska politika",
         "co2",
-        "ugljicna taksa",
+        "porez na ugljik",
+        "ugljicni porez",
         "obnovljivi izvori",
         "energija",
         "energetska tranzicija",
+        "odrzivi razvoj",
+        "zelena tranzicija",
+        "eu ets",
+        "niskougljicni rast",
+        "niskoemisijski rast",
+        "klimatska neutralnost",
+        "cop",
     ],
     "Subvencije i drzavne potpore": [
         "subvencije",
@@ -187,29 +204,51 @@ def fetch_articles(
 
 
 def build_html_report(articles: List[dict], date_from: date, date_to: date) -> str:
+    def summarize(text: str, limit: int = 80) -> str:
+        words = (text or "").split()
+        if len(words) <= limit:
+            return " ".join(words)
+        return " ".join(words[:limit]) + " …"
+
+    # grupiranje po profilu
+    buckets = {p: [] for p in KEYWORD_PROFILES.keys()}
+    buckets["Ostalo"] = []
+    for art in articles:
+        text = (art.get("title", "") + " " + art.get("summary", "")).lower()
+        placed = False
+        for profile, kws in KEYWORD_PROFILES.items():
+            if any(k.lower() in text for k in kws):
+                buckets[profile].append(art)
+                placed = True
+        if not placed:
+            buckets["Ostalo"].append(art)
+
     html: List[str] = []
     html.append("<html><body>")
     html.append(f"<h2>Dnevni pregled vijesti ({date_from} — {date_to})</h2>")
-    if not articles:
-        html.append("<p>Nema pronadenih clanaka.</p>")
-        html.append("</body></html>")
-        return "\n".join(html)
 
-    html.append("<ol>")
-    for art in articles:
-        html.append("<li>")
-        html.append(f'<p><strong><a href="{art["link"]}">{art["title"]}</a></strong></p>')
-        meta = []
-        if art.get("source"):
-            meta.append(art["source"])
-        if art.get("published"):
-            meta.append(art["published"].strftime("%Y-%m-%d %H:%M"))
-        meta.append(f"Score: {art['score']}")
-        html.append("<p>" + " | ".join(meta) + "</p>")
-        if art.get("summary"):
-            html.append(f"<p>{art['summary']}</p>")
-        html.append("</li><hr>")
-    html.append("</ol>")
+    total = sum(len(v) for v in buckets.values())
+    html.append(f"<p>Ukupno članka: {total}</p>")
+
+    for profile, items in buckets.items():
+        if not items:
+            continue
+        html.append(f"<h3>{profile}</h3>")
+        html.append("<ol>")
+        for a in items:
+            html.append("<li>")
+            html.append(f'<p><strong><a href="{a["link"]}">{a["title"]}</a></strong></p>')
+            meta = []
+            if a.get("source"):
+                meta.append(a["source"])
+            if a.get("published"):
+                meta.append(a["published"].strftime("%Y-%m-%d %H:%M"))
+            meta.append(f"Score: {a['score']}")
+            html.append("<p>" + " | ".join(meta) + "</p>")
+            html.append(f"<p>{summarize(a.get('summary', ''), limit=80)}</p>")
+            html.append("</li><hr>")
+        html.append("</ol>")
+
     html.append("</body></html>")
     return "\n".join(html)
 
