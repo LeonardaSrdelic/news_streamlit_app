@@ -594,7 +594,7 @@ def search_gov_pages(
 
 
 def render_rss_mode():
-    st.subheader("Presscut stil pracenja vijesti (RSS)")
+    st.subheader("Presscut stil praćenja vijesti (RSS)")
 
     today = date.today()
     default_from = today - timedelta(days=2)
@@ -606,10 +606,10 @@ def render_rss_mode():
         date_to = st.date_input("Datum do", value=today)
 
     mode = st.radio(
-        "Nacin rada",
-        options=["Dohvati svjeze iz RSS-a", "Koristi arhivu (SQLite)"],
+        "Način rada",
+        options=["Dohvati svježe iz RSS-a", "Koristi arhivu (SQLite)"],
         index=0,
-        help="Live pretraga ili citanje iz arhive spremljene u SQLite.",
+        help="Live pretraga ili čitanje iz arhive spremljene u SQLite.",
     )
 
     selected_sources = st.multiselect(
@@ -619,13 +619,13 @@ def render_rss_mode():
     )
 
     selected_profiles = st.multiselect(
-        "Tematski profili (odaberi jedan ili vise)",
+        "Tematski profili (odaberi jedan ili više)",
         options=list(KEYWORD_PROFILES.keys()),
         default=list(KEYWORD_PROFILES.keys()),
     )
 
     extra_keywords_text = st.text_input(
-        "Dodatne kljucne rijeci (zarezima odvojeno)",
+        "Dodatne ključne riječi (zarezima odvojeno)",
         value="",
     )
 
@@ -637,27 +637,27 @@ def render_rss_mode():
         extra_keywords = [k.strip() for k in extra_keywords_text.split(",") if k.strip()]
         all_keywords.extend(extra_keywords)
 
-    with st.expander("Prikazi aktivne kljucne rijeci"):
+    with st.expander("Prikaži aktivne ključne riječi"):
         st.write(sorted(set(all_keywords)))
 
     st.subheader("Napredno filtriranje u Presscut stilu")
 
     must_have_text = st.text_input(
-        "Obvezne rijeci (mora se pojaviti SVAKA, odvojene zarezima)",
+        "Obvezne riječi (mora se pojaviti SVAKA, odvojene zarezima)",
         value="porezna reforma, mirovinska reforma",
-        help="Ako je prazno, nijedna rijec nije obvezna.",
+        help="Ako je prazno, nijedna riječ nije obvezna.",
     )
 
     nice_to_have_text = st.text_input(
-        "Pozeljne rijeci (povecavaju relevantnost, ali nisu obvezne)",
+        "Poželjne riječi (povećavaju relevantnost, ali nisu obvezne)",
         value="HNB, Europska komisija, Vlada, Sabor",
-        help="Clanci s ovim rijecima rangirat ce se vise.",
+        help="Članci s ovim riječima rangirat će se više.",
     )
 
     exclude_text = st.text_input(
-        "Iskljucene rijeci (ako se pojave, clanak se izbacuje)",
+        "Isključene riječi (ako se pojave, članak se izbacuje)",
         value="sport, nogomet, rukomet",
-        help="Koristi za filtriranje sportskih i slicnih nerelevantnih vijesti.",
+        help="Koristi za filtriranje sportskih i sličnih nerelevantnih vijesti.",
     )
 
     must_have_words = parse_list(must_have_text)
@@ -666,7 +666,7 @@ def render_rss_mode():
 
     save_to_db = st.checkbox("Spremi rezultate u bazu (SQLite)", value=True)
 
-    if st.button("Pretrazi vijesti"):
+    if st.button("Pretraži vijesti"):
         articles: List[dict] = []
 
         if mode == "Koristi arhivu (SQLite)":
@@ -698,9 +698,9 @@ def render_rss_mode():
         else:
             if not all_keywords and not must_have_words and not nice_to_have_words:
                 st.warning(
-                    "Nema aktivnih kljucnih rijeci. "
-                    "Odaberi barem jedan profil ili dodaj kljucne rijeci, "
-                    "ili postavi obvezne/pozeljne rijeci."
+                    "Nema aktivnih ključnih riječi. "
+                    "Odaberi barem jedan profil ili dodaj ključne riječi, "
+                    "ili postavi obvezne/poželjne riječi."
                 )
                 return
 
@@ -745,7 +745,7 @@ def render_rss_mode():
             except Exception as exc:
                 st.warning(f"Nisam uspjela spremiti rezultate: {exc}")
 
-        st.subheader(f"Pronadeno clanaka: {len(articles)}")
+        st.subheader(f"Pronađeno članaka: {len(articles)}")
 
         if not articles:
             st.info("Nema clanaka koji zadovoljavaju zadane kriterije.")
@@ -758,7 +758,7 @@ def render_rss_mode():
                 meta_parts.append(f"Izvor: {art['source']}")
             if art.get("published_at"):
                 meta_parts.append("Objavljeno: " + art["published_at"].strftime("%Y-%m-%d %H:%M"))
-            meta_parts.append(f"Score: {art['score']} (vece je relevantnije)")
+            meta_parts.append(f"Score: {art['score']} (veće je relevantnije)")
             if meta_parts:
                 st.caption("  |  ".join(meta_parts))
 
@@ -798,10 +798,10 @@ def render_rss_mode():
 def main():
     st.set_page_config(page_title="Presscut stil: vijesti", layout="wide")
 
-    st.title("Pracenje vijesti: porezi, mirovine, klimatske politike, subvencije")
+    st.title("Praćenje vijesti: porezi, mirovine, klimatske politike, subvencije")
     st.write(
-        "Aplikacija pretrazuje RSS kanale hrvatskih portala prema tematskim profilima kljucnih rijeci i zadanom razdoblju. "
-        "Rezultate filtrira presscut stilom (obvezne/pozeljne/iskljucene rijeci, scoring, bonus za svjezinu) i omogucuje slanje dnevnog izvjestaja emailom."
+        "Aplikacija pretražuje RSS kanale hrvatskih portala prema tematskim profilima ključnih riječi i zadanom razdoblju. "
+        "Rezultate filtrira presscut stilom (obvezne/poželjne/isključene riječi, scoring, bonus za svježinu) i omogućuje slanje dnevnog izvještaja emailom."
     )
 
     render_rss_mode()
