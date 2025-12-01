@@ -439,17 +439,20 @@ def build_html_report(articles: List[dict], date_from: date, date_to: date) -> s
             return " ".join(words)
         return " ".join(words[:limit]) + " …"
 
-    # grupiranje po profilu
+    # grupiranje po profilu (dodijeli prvi koji pogodi)
     buckets = {p: [] for p in KEYWORD_PROFILES.keys()}
     buckets["Ostalo"] = []
     for art in articles:
         text = (art.get("title", "") + " " + art.get("summary", "")).lower()
-        placed = False
+        target_profile = None
         for profile, kws in KEYWORD_PROFILES.items():
-            if any(k.lower() in text for k in kws):
-                buckets[profile].append(art)
-                placed = True
-        if not placed:
+            hits = sum(1 for k in kws if k.lower() in text)
+            if hits >= 1:
+                target_profile = profile
+                break
+        if target_profile:
+            buckets[target_profile].append(art)
+        else:
             buckets["Ostalo"].append(art)
 
     html: List[str] = []

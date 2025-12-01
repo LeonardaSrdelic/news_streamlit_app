@@ -203,12 +203,15 @@ def build_html_report(articles, date_from, date_to, selected_profiles, all_keywo
 
     for art in articles:
         text = (art.get("title", "") + " " + art.get("summary", "")).lower()
-        placed = False
+        target_profile = None
         for profile, kws in KEYWORD_PROFILES.items():
-            if any(k.lower() in text for k in kws):
-                buckets[profile].append(art)
-                placed = True
-        if not placed:
+            hits = sum(1 for k in kws if k.lower() in text)
+            if hits >= 1:
+                target_profile = profile
+                break
+        if target_profile:
+            buckets[target_profile].append(art)
+        else:
             buckets["Ostalo"].append(art)
 
     html_parts: List[str] = []
