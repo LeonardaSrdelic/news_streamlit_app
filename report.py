@@ -4,18 +4,37 @@ from datetime import date, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Dict, List
+from urllib.parse import urljoin, urlparse
+from io import BytesIO
 
 import feedparser
+import requests
+from bs4 import BeautifulSoup
+from pypdf import PdfReader
 
 
 # RSS izvori (isti koncept kao u app.py; prosiri po potrebi)
+# Širi popis iz app.py (HR portali + HRT + Slobodna)
 RSS_FEEDS: Dict[str, str] = {
+    # Opći i vijesti
     "N1": "https://n1info.hr/feed/",
-    "Index": "https://www.index.hr/rss",
-    "Jutarnji": "https://www.jutarnji.hr/rss",
+    "Index Vijesti": "https://www.index.hr/rss/vijesti",
+    "Index Novac": "https://www.index.hr/rss/vijesti-novac",
+    "Jutarnji Vijesti": "http://www.jutarnji.hr/rss",
     "Vecernji": "https://www.vecernji.hr/rss",
     "Tportal": "https://www.tportal.hr/rss",
+    "24sata News": "https://www.24sata.hr/feeds/news.xml",
+    # Biznis/ekonomija
     "Poslovni": "https://www.poslovni.hr/feed",
+    "Lider": "https://lidermedia.hr/rss",
+    # Slobodna Dalmacija sekcije
+    "Slobodna Vijesti": "https://slobodnadalmacija.hr/feed/category/119",
+    "Slobodna Biznis": "https://slobodnadalmacija.hr/feed/category/244",
+    # HRT
+    "HRT Vijesti": "https://vijesti.hrt.hr/rss",
+    # Vladini i EU izvori (ako su dostupni)
+    "Vlada RH": "https://vlada.gov.hr/rss",
+    "EU Komunikacije": "https://ec.europa.eu/commission/presscorner/home/en/rss.xml",
 }
 
 # Tematski profili; koristi sve zajedno kao bazne kljucne rijeci
@@ -70,6 +89,15 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
         "eu fondovi",
     ],
 }
+
+GOV_PAGES = [
+    "https://vlada.gov.hr/vijesti/8",
+    "https://vlada.gov.hr/istaknute-teme/odrzivi-razvoj/14969",
+]
+
+GOV_MANUAL_DOCS = [
+    "https://vlada.gov.hr/UserDocsImages/Vijesti/2025/Studeni/20_studenoga/III._sjednica_Nacionalnog_vijeca_za_odrzivi_razvoj.pdf",
+]
 
 
 def presscut_score(
@@ -150,6 +178,48 @@ def normalize_datetime(entry) -> datetime:
     return datetime.utcnow()
 
 
+def guess_pub_date_from_url(url: str) -> datetime:
+    parsed = urlparse(url)
+    parts = [p for p in parsed.path.split("/") if p]
+    year = None
+    month = None
+    day = None
+
+    months = {
+        "sijecanj": 1, "veljaca": 2, "ozujak": 3, "travanj": 4, "svibanj": 5, "lipanj": 6,
+        "srpanj": 7, "kolovoz": 8, "rujan": 9, "listopad": 10, "studeni": 11, "prosinac": 12,
+    }
+    for p in parts:
+        if p.isdigit() and len(p) == 4 and p.startswith("20"):
+            year = int(p)
+        lower = p.lower()
+        if lower in months:
+            month = months[lower]
+        if "_" in p or "-" in p:
+            for token in p.replace("-", "_").split("_"):
+                if token.isdigit():
+                    day = int(token)
+                    break
+    try:
+        if year and month and day:
+            return datetime(year, month, day)
+        if year and month:
+            return datetime(year, month, 1)
+    except Exception:
+        pass
+    return datetime.utcnow()
+
+
+def extract_text_from_html(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    article = soup.find("article") or soup.find("main") or soup
+    for tag in article.find_all(["script", "style", "nav", "footer", "header", "form"]):
+        tag.decompose()
+    text = article.get_text(separator=" ", strip=True)
+    words = text.split()
+    return " ".join(words)
+
+
 def fetch_articles(
     date_from: date,
     date_to: date,
@@ -198,6 +268,134 @@ def fetch_articles(
                     "score": score,
                 }
             )
+
+    results.sort(key=lambda x: (x["score"], x["published"]), reverse=True)
+    return results
+
+
+def fetch_gov_articles(
+    date_from: date,
+    date_to: date,
+    keywords: List[str],
+    must_have: List[str],
+    nice_to_have: List[str],
+    exclude: List[str],
+) -> List[dict]:
+    ref_date = date_to
+    results: List[dict] = []
+    seen_links = set()
+
+    paginated_urls: List[str] = []
+    for base in GOV_PAGES:
+        paginated_urls.append(base)
+        for p in range(1, 6):
+            paginated_urls.append(f"{base}?page={p}")
+
+    for base_url in paginated_urls:
+        try:
+            resp = requests.get(base_url, timeout=20)
+            resp.raise_for_status()
+        except Exception:
+            continue
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            full_url = urljoin(base_url, href)
+            title = a.get_text(strip=True) or full_url
+
+            if full_url in seen_links:
+                continue
+            seen_links.add(full_url)
+
+            is_pdf = full_url.lower().endswith(".pdf")
+            if ("vlada.gov.hr" not in full_url) and not is_pdf:
+                continue
+            if not is_pdf:
+                if ("/vijesti/" not in full_url) and ("UserDocsImages" not in full_url):
+                    continue
+                if "?page=" in full_url:
+                    continue
+            if len(title) < 5 or "preskoci" in title.lower():
+                continue
+            if full_url.rstrip("/") in {"https://vlada.gov.hr", "https://vlada.gov.hr/"}:
+                continue
+
+            pub_dt = guess_pub_date_from_url(full_url)
+            if not (date_from <= pub_dt.date() <= date_to):
+                continue
+
+            summary = ""
+            if is_pdf:
+                try:
+                    pdf_resp = requests.get(full_url, timeout=30)
+                    pdf_resp.raise_for_status()
+                    reader = PdfReader(BytesIO(pdf_resp.content))
+                    pages_text = []
+                    for page in reader.pages[:6]:
+                        pages_text.append(page.extract_text() or "")
+                    summary = " ".join(pages_text)
+                except Exception:
+                    summary = ""
+            else:
+                try:
+                    page_resp = requests.get(full_url, timeout=20)
+                    page_resp.raise_for_status()
+                    summary = extract_text_from_html(page_resp.text)
+                except Exception:
+                    summary = ""
+
+            score = presscut_score(
+                title=title,
+                summary=summary,
+                base_keywords=keywords,
+                must_have=must_have,
+                nice_to_have=nice_to_have,
+                exclude=exclude,
+                published_at=pub_dt,
+                ref_date=ref_date,
+            )
+            if score is None:
+                continue
+
+            results.append(
+                {
+                    "source": "Vlada/EU",
+                    "title": title,
+                    "link": full_url,
+                    "summary": summary,
+                    "published": pub_dt,
+                    "score": score,
+                }
+            )
+
+    for url in GOV_MANUAL_DOCS:
+        pub_dt = guess_pub_date_from_url(url)
+        if not (date_from <= pub_dt.date() <= date_to):
+            continue
+        title = url.rsplit("/", 1)[-1]
+        score = presscut_score(
+            title=title,
+            summary="",
+            base_keywords=keywords,
+            must_have=must_have,
+            nice_to_have=nice_to_have,
+            exclude=exclude,
+            published_at=pub_dt,
+            ref_date=ref_date,
+        )
+        if score is None:
+            continue
+        results.append(
+            {
+                "source": "Vlada/EU",
+                "title": title,
+                "link": url,
+                "summary": "",
+                "published": pub_dt,
+                "score": score,
+            }
+        )
 
     results.sort(key=lambda x: (x["score"], x["published"]), reverse=True)
     return results
@@ -293,6 +491,22 @@ def main():
         nice_to_have=nice_to_have,
         exclude=exclude,
     )
+
+    gov_articles = fetch_gov_articles(
+        date_from=date_from,
+        date_to=date_to,
+        keywords=base_keywords,
+        must_have=must_have,
+        nice_to_have=nice_to_have,
+        exclude=exclude,
+    )
+    if gov_articles:
+        seen = {a["link"] for a in articles}
+        for g in gov_articles:
+            if g["link"] not in seen:
+                articles.append(g)
+                seen.add(g["link"])
+        articles.sort(key=lambda x: (x["score"], x["published"]), reverse=True)
 
     html = build_html_report(articles, date_from, date_to)
     send_email(html, subject="Dnevni pregled vijesti")
