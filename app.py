@@ -6,12 +6,14 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import List
 from urllib.parse import urljoin, urlparse
+from io import BytesIO
 
 import feedparser
 import pandas as pd
 import requests
 import streamlit as st
 from bs4 import BeautifulSoup
+from pypdf import PdfReader
 from sqlalchemy import create_engine
 
 # Ako budemo ponovno trebali web/Serper modul, importi ostaju.
@@ -358,6 +360,16 @@ def guess_pub_date_from_url(url: str) -> datetime:
     return datetime.utcnow()
 
 
+def extract_text_from_html(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    article = soup.find("article") or soup.find("main") or soup
+    for tag in article.find_all(["script", "style", "nav", "footer", "header", "form"]):
+        tag.decompose()
+    text = article.get_text(separator=" ", strip=True)
+    words = text.split()
+    return " ".join(words)
+
+
 def normalize_datetime(entry) -> datetime:
     if hasattr(entry, "published_parsed") and entry.published_parsed:
         return datetime.fromtimestamp(calendar.timegm(entry.published_parsed))
@@ -445,10 +457,11 @@ def search_gov_pages(
     exclude: List[str],
 ) -> List[dict]:
     """
-    Jednostavan scrape vladinih stranica za linkove (posebno PDF) i presscut filtriranje.
+    Scrape vladinih stranica za linkove (posebno PDF) i presscut filtriranje.
     """
     results: List[dict] = []
     ref_date = date_to
+    seen_links = set()
 
     for base_url in GOV_PAGES:
         try:
@@ -463,17 +476,42 @@ def search_gov_pages(
             full_url = urljoin(base_url, href)
             title = a.get_text(strip=True) or full_url
 
-            # Fokus na pdf ili vijesti
-            if not full_url.lower().endswith(".pdf") and "vijesti" not in full_url:
+            if full_url in seen_links:
+                continue
+            seen_links.add(full_url)
+
+            is_pdf = full_url.lower().endswith(".pdf")
+            # Fokus na PDF i vijesti na vlada.gov.hr
+            if ("vlada.gov.hr" not in full_url) and not is_pdf:
                 continue
 
             pub_dt = guess_pub_date_from_url(full_url)
             if not (date_from <= pub_dt.date() <= date_to):
                 continue
 
+            summary = ""
+            if is_pdf:
+                try:
+                    pdf_resp = requests.get(full_url, timeout=30)
+                    pdf_resp.raise_for_status()
+                    reader = PdfReader(BytesIO(pdf_resp.content))
+                    pages_text = []
+                    for page in reader.pages[:6]:
+                        pages_text.append(page.extract_text() or "")
+                    summary = " ".join(pages_text)
+                except Exception:
+                    summary = ""
+            else:
+                try:
+                    page_resp = requests.get(full_url, timeout=20)
+                    page_resp.raise_for_status()
+                    summary = extract_text_from_html(page_resp.text)
+                except Exception:
+                    summary = ""
+
             score = presscut_score(
                 title=title,
-                summary="",
+                summary=summary,
                 base_keywords=keywords,
                 must_have=must_have,
                 nice_to_have=nice_to_have,
