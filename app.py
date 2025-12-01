@@ -502,7 +502,12 @@ def search_gov_pages(
             if not is_pdf:
                 if ("/vijesti/" not in full_url) and ("UserDocsImages" not in full_url):
                     continue
+                # preskoci listing paginaciju i skip linkove
+                if "?page=" in full_url:
+                    continue
             if len(title) < 5:
+                continue
+            if "preskoci" in title.lower():
                 continue
             if full_url.rstrip("/") in {"https://vlada.gov.hr", "https://vlada.gov.hr/"}:
                 continue
