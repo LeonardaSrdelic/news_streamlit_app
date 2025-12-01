@@ -763,7 +763,11 @@ def render_rss_mode():
                 st.caption("  |  ".join(meta_parts))
 
             if art.get("summary"):
-                st.write(art["summary"])
+                words = (art.get("summary") or "").split()
+                short = " ".join(words[:120])
+                if len(words) > 120:
+                    short += " …"
+                st.write(short)
 
             st.write("---")
 
