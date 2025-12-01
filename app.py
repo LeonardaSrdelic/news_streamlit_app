@@ -73,6 +73,9 @@ RSS_FEEDS = {
     "Slobodna Biznis": "https://slobodnadalmacija.hr/feed/category/244",
     # HRT
     "HRT Vijesti": "https://vijesti.hrt.hr/rss",
+    # Vladini i EU izvori (ako su dostupni)
+    "Vlada RH": "https://vlada.gov.hr/rss",
+    "EU Komunikacije": "https://ec.europa.eu/commission/presscorner/home/en/rss.xml",
 }
 
 
