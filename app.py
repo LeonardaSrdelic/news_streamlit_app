@@ -47,6 +47,7 @@ KEYWORD_PROFILES = {
         "obnovljivi izvori",
         "energija",
         "energetska tranzicija",
+        "odrzivi razvoj",
     ],
     "Subvencije i drzavne potpore": [
         "subvencije",
@@ -85,6 +86,11 @@ RSS_FEEDS = {
 GOV_PAGES = [
     "https://vlada.gov.hr/vijesti/8",
     "https://vlada.gov.hr/istaknute-teme/odrzivi-razvoj/14969",
+]
+
+# Manualni vladini dokumenti koje zelimo ukljuciti (npr. PDF objave)
+GOV_MANUAL_DOCS = [
+    "https://vlada.gov.hr/UserDocsImages/Vijesti/2025/Studeni/20_studenoga/III._sjednica_Nacionalnog_vijeca_za_odrzivi_razvoj.pdf",
 ]
 
 
@@ -488,6 +494,35 @@ def search_gov_pages(
                     "score": score,
                 }
             )
+
+    # Manualni linkovi (npr. specificni PDF-ovi)
+    for url in GOV_MANUAL_DOCS:
+        pub_dt = guess_pub_date_from_url(url)
+        if not (date_from <= pub_dt.date() <= date_to):
+            continue
+        title = url.rsplit("/", 1)[-1]
+        score = presscut_score(
+            title=title,
+            summary="",
+            base_keywords=keywords,
+            must_have=must_have,
+            nice_to_have=nice_to_have,
+            exclude=exclude,
+            published_at=pub_dt,
+            ref_date=ref_date,
+        )
+        if score is None:
+            continue
+        results.append(
+            {
+                "title": title,
+                "link": url,
+                "source": "Vlada/EU",
+                "published_at": pub_dt,
+                "summary": "",
+                "score": score,
+            }
+        )
 
     results.sort(key=lambda x: (x["score"], x["published_at"]), reverse=True)
     return results
