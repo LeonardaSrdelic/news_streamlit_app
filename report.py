@@ -42,7 +42,7 @@ RSS_FEEDS: Dict[str, str] = {
 
 # Tematski profili; koristi sve zajedno kao bazne kljucne rijeci
 KEYWORD_PROFILES: Dict[str, List[str]] = {
-    "Porezi i proracun": [
+    "Porezi, subvencije i proracun": [
         "porezna reforma",
         "porez na dohodak",
         "porez na dobit",
@@ -58,6 +58,12 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
         "proracunski prihodi",
         "javne financije",
         "fiskalna pravila",
+        "subvencije",
+        "drzavne potpore",
+        "potpore poduzecima",
+        "nacionalni plan oporavka",
+        "europski fondovi",
+        "eu fondovi",
     ],
     "Mirovine i socijalna politika": [
         "mirovinska reforma",
@@ -106,6 +112,18 @@ KEYWORD_PROFILES: Dict[str, List[str]] = {
         "privatizacija",
         "upravljanje drzavnim poduzecima",
         "reforma javnih poduzeca",
+    ],
+    "Digitalizacija i fintech": [
+        "digitalizacija",
+        "fintech",
+        "financijska tehnologija",
+        "digitalni novac",
+        "cbdc",
+        "kriptovalute",
+        "bitcoin",
+        "blockchain",
+        "europska digitalna razmjena",
+        "digitalna infrastruktura",
     ],
     "Geopolitika i sigurnost": [
         "geopolitika",
