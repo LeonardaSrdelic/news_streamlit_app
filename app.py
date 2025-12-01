@@ -572,6 +572,10 @@ def search_gov_pages(
                 continue
             seen_links.add(full_url)
 
+            lower_title = title.lower()
+            if lower_title in {"vijesti", "pristupacnost", "preskoci na glavni sadrzaj"}:
+                continue
+
             is_pdf = full_url.lower().endswith(".pdf")
             # dozvoli vlada.gov.hr vijesti ili UserDocsImages PDF
             if ("vlada.gov.hr" not in full_url) and not is_pdf:

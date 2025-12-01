@@ -357,6 +357,10 @@ def fetch_gov_articles(
                 continue
             seen_links.add(full_url)
 
+            lower_title = title.lower()
+            if lower_title in {"vijesti", "pristupacnost", "preskoci na glavni sadrzaj"}:
+                continue
+
             is_pdf = full_url.lower().endswith(".pdf")
             if ("vlada.gov.hr" not in full_url) and not is_pdf:
                 continue
