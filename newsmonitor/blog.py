@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 from urllib.parse import urljoin, urlparse
+from functools import lru_cache
 from io import BytesIO
 
 import requests
@@ -15,9 +16,15 @@ class BlogPost:
     text: str
 
 
+@lru_cache(maxsize=128)
 def extract_article_text(url: str) -> str:
-    resp = requests.get(url, timeout=30)
-    resp.raise_for_status()
+    try:
+        resp = requests.get(url, timeout=30)
+    except Exception:
+        return ""
+
+    if resp.status_code >= 400:
+        return ""
 
     content_type = resp.headers.get("content-type", "").lower()
     is_pdf = "pdf" in content_type or url.lower().endswith(".pdf")
@@ -53,8 +60,13 @@ def extract_article_text(url: str) -> str:
 
 
 def fetch_blog_posts(index_url: str) -> List[BlogPost]:
-    resp = requests.get(index_url, timeout=20)
-    resp.raise_for_status()
+    try:
+        resp = requests.get(index_url, timeout=20)
+    except Exception:
+        return []
+
+    if resp.status_code >= 400:
+        return []
 
     content_type = resp.headers.get("content-type", "").lower()
     is_pdf = "pdf" in content_type or index_url.lower().endswith(".pdf")
