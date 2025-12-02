@@ -12,10 +12,29 @@ import feedparser
 import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+try:
+    from nltk.stem.snowball import SnowballStemmer
+except Exception:
+    SnowballStemmer = None
 
 MIN_SCORE = 23
-MIN_SCORE_MEDIA = 18
-MIN_SCORE_GOV = 23
+MIN_SCORE_MEDIA = 8
+MIN_SCORE_GOV = 14
+
+
+def get_stemmer():
+    if SnowballStemmer:
+        try:
+            return SnowballStemmer("croatian")
+        except Exception:
+            return SnowballStemmer("english")
+    return None
+
+
+STEMMER = get_stemmer()
 
 
 # RSS izvori (isti koncept kao u app.py; prosiri po potrebi)
@@ -188,56 +207,88 @@ def presscut_score(
     ref_date: date,
 ) -> int | None:
     """
-    Score s tezinama za naslov/sazetak i bonusom za svjezinu.
+    Score s tezinama za naslov/sazetak, TF-IDF signalom i bonusom za svjezinu.
     """
     title = title or ""
     summary = summary or ""
 
-    t_title = title.lower()
-    t_summary = summary.lower()
+    def tokenize(text: str) -> List[str]:
+        return re.findall(r"[A-Za-zČĆŽŠĐčćžšđ0-9]+", text.lower())
 
-    for w in exclude:
-        lw = w.lower()
-        if lw in t_title or lw in t_summary:
+    def stem_words(words: List[str]) -> List[str]:
+        if STEMMER:
+            try:
+                return [STEMMER.stem(w) for w in words]
+            except Exception:
+                pass
+        return words
+
+    def stem_list(words: List[str]) -> List[str]:
+        tokens = []
+        for w in words:
+            tokens.extend(stem_words(tokenize(w)))
+        return tokens
+
+    title_tokens = stem_words(tokenize(title))
+    summary_tokens = stem_words(tokenize(summary))
+    text_tokens = title_tokens + summary_tokens
+
+    must_stems = stem_list(must_have)
+    base_stems = stem_list(base_keywords)
+    nice_stems = stem_list(nice_to_have)
+    exclude_stems = stem_list(exclude)
+
+    for w in exclude_stems:
+        if w in text_tokens:
             return None
 
-    for w in must_have:
-        lw = w.lower()
-        if lw not in t_title and lw not in t_summary:
+    for w in must_stems:
+        if w not in text_tokens:
             return None
 
     score = 0
     base_hit = False
     nice_hit = False
 
-    def count_hits(text: str, word: str) -> int:
-        return text.count(word.lower())
+    def count_hits(tokens: List[str], word: str) -> int:
+        return tokens.count(word)
 
-    for w in must_have:
-        lw = w.lower()
-        score += count_hits(t_title, lw) * 5
-        score += count_hits(t_summary, lw) * 3
+    for w in must_stems:
+        hits_title = count_hits(title_tokens, w)
+        hits_summary = count_hits(summary_tokens, w)
+        score += hits_title * 5
+        score += hits_summary * 3
 
-    for w in base_keywords:
-        lw = w.lower()
-        hits_title = count_hits(t_title, lw)
-        hits_summary = count_hits(t_summary, lw)
+    for w in base_stems:
+        hits_title = count_hits(title_tokens, w)
+        hits_summary = count_hits(summary_tokens, w)
         if hits_title or hits_summary:
             base_hit = True
         score += hits_title * 3
         score += hits_summary * 2
 
-    for w in nice_to_have:
-        lw = w.lower()
-        hits_title = count_hits(t_title, lw)
-        hits_summary = count_hits(t_summary, lw)
+    for w in nice_stems:
+        hits_title = count_hits(title_tokens, w)
+        hits_summary = count_hits(summary_tokens, w)
         if hits_title or hits_summary:
             nice_hit = True
         score += hits_title * 2
         score += hits_summary * 1
 
-    if not must_have and not (base_hit or nice_hit):
+    if not must_stems and not (base_hit or nice_hit):
         return None
+
+    # TF-IDF sličnost između upita (profilnih riječi) i teksta kao dodatni signal
+    query_text = " ".join(base_keywords + nice_to_have + must_have)
+    doc_text = " ".join([title, summary])
+    tfidf_sim = 0.0
+    try:
+        vec = TfidfVectorizer(max_features=4000, ngram_range=(1, 2))
+        tfidf = vec.fit_transform([doc_text, query_text])
+        tfidf_sim = float(cosine_similarity(tfidf[0:1], tfidf[1:2])[0, 0])
+    except Exception:
+        tfidf_sim = 0.0
+    score += int(tfidf_sim * 30)
 
     age_days = (ref_date - published_at.date()).days
     if age_days < 0:
@@ -511,6 +562,34 @@ def fetch_gov_articles(
     return results
 
 
+def deduplicate_articles(articles: List[dict], title_threshold: float = 0.82) -> List[dict]:
+    """
+    Fuzzy dedup na naslovima – zadrži onaj s višim scoreom.
+    """
+    kept: List[dict] = []
+    for art in articles:
+        title_lower = art.get("title", "").lower()
+        dup_found = False
+        for existing in kept:
+            exist_title = existing.get("title", "").lower()
+            if not title_lower or not exist_title:
+                continue
+            set_a = set(title_lower.split())
+            set_b = set(exist_title.split())
+            if not set_a or not set_b:
+                continue
+            overlap = len(set_a & set_b)
+            ratio = overlap / min(len(set_a), len(set_b))
+            if ratio >= title_threshold:
+                dup_found = True
+                if art.get("score", 0) > existing.get("score", 0):
+                    existing.update(art)
+                break
+        if not dup_found:
+            kept.append(art)
+    return kept
+
+
 def build_html_report(articles: List[dict], date_from: date, date_to: date) -> str:
     def summarize(text: str, limit: int = 60) -> str:
         words = (text or "").split()
@@ -598,7 +677,26 @@ def main():
 
     must_have: List[str] = []
     nice_to_have: List[str] = ["hnb", "vlada", "sabor", "ek"]
-    exclude: List[str] = ["sport", "nogomet", "rukomet"]
+    exclude: List[str] = [
+        "sport",
+        "nogomet",
+        "rukomet",
+        "kosarka",
+        "tenis",
+        "nesreca",
+        "prometna",
+        "ubojstvo",
+        "kriminal",
+        "celebrity",
+        "showbiz",
+        "moda",
+        "lifestyle",
+        "seks",
+        "trac",
+        "tracevi",
+        "navijaci",
+        "zabava",
+    ]
 
     articles = fetch_articles(
         date_from=date_from,
@@ -623,7 +721,9 @@ def main():
             if g["link"] not in seen:
                 articles.append(g)
                 seen.add(g["link"])
-        articles.sort(key=lambda x: (x["score"], x["published"]), reverse=True)
+    articles.sort(key=lambda x: (x["score"], x["published"]), reverse=True)
+
+    articles = deduplicate_articles(articles)
 
     # minimalni score filter (razlicito za Vlada/EU i medije)
     filtered = []
