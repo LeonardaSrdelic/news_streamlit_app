@@ -1,0 +1,9 @@
+# Compiled Python artifacts
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+
+# OS junk
+.DS_Store
