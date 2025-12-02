@@ -6,3 +6,4 @@ pandas
 pypdf
 sqlalchemy
 feedparser
+nltk
