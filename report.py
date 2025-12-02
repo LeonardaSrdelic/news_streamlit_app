@@ -22,7 +22,7 @@ except Exception:
 
 MIN_SCORE = 23
 MIN_SCORE_MEDIA = 25
-MIN_SCORE_GOV = 25
+MIN_SCORE_GOV = 100
 
 
 def get_stemmer():
