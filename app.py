@@ -215,6 +215,8 @@ TABLOID_TERMS = {
     "droga", "narkotik", "kokain", "heroina", "oruzje", "oružje", "bomb", "eksplozija",
     "šokantno", "šokantna", "šok", "skandal", "potreseno", "navijači", "navijaci",
     "celebrity", "showbiz", "gola", "seksi", "seks", "reality", "big brother", "ljubavnica",
+    "papa", "vatikan", "crkva", "svecenik", "svećenik", "misa", "vjerski", "vjernici",
+    "hipodrom",
 }
 
 
@@ -449,11 +451,13 @@ def presscut_score(
         score += hits_title * 5
         score += hits_summary * 3
 
+    base_hits_total = 0
     for w in base_stems:
         hits_title = count_hits(title_tokens, w)
         hits_summary = count_hits(summary_tokens, w)
         if hits_title or hits_summary:
             base_hit = True
+        base_hits_total += hits_title + hits_summary
         score += hits_title * 3
         score += hits_summary * 2
 
@@ -465,8 +469,8 @@ def presscut_score(
         score += hits_title * 2
         score += hits_summary * 1
 
-    # Striktno: ako nema obveznih, zahtijevaj barem jedan pogodak iz temeljnih ili poželjnih.
-    if not must_stems and not (base_hit or nice_hit):
+    # Striktno: ako nema obveznih, zahtijevaj barem jedan pogodak iz temeljnih.
+    if not must_stems and base_hits_total < 2:
         return None
 
     # TF-IDF sličnost kao dodatni signal (naslov + sažetak vs. upit)
@@ -479,7 +483,7 @@ def presscut_score(
         tfidf_sim = float(cosine_similarity(tfidf[0:1], tfidf[1:2])[0, 0])
     except Exception:
         tfidf_sim = 0.0
-    score += int(tfidf_sim * 30)
+    score += int(tfidf_sim * 10)
 
     age_days = (ref_date - published_at.date()).days
     if age_days < 0:
@@ -886,7 +890,7 @@ def render_rss_mode():
         value=(
             "sport, nogomet, rukomet, kosarka, tenis, nesreca, prometna, ubojstvo, "
             "kriminal, celebrity, showbiz, moda, lifestyle, seks, trač, tračevi, "
-            "navijači, zabava"
+            "navijači, zabava, papa, vatikan, crkva, misa, vjerski, hipodrom, tragedija"
         ),
         help="Koristi za filtriranje sportskih, crne kronike, celebritija i zabave.",
     )
