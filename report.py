@@ -21,8 +21,8 @@ except Exception:
     SnowballStemmer = None
 
 MIN_SCORE = 23
-MIN_SCORE_MEDIA = 8
-MIN_SCORE_GOV = 20
+MIN_SCORE_MEDIA = 25
+MIN_SCORE_GOV = 25
 
 
 def get_stemmer():
