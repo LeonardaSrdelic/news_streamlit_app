@@ -33,7 +33,7 @@ DB_PATH = "articles.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
 # Minimalni score pragovi (može se prilagoditi u sučelju)
 MIN_SCORE_MEDIA = 8
-MIN_SCORE_GOV = 14
+MIN_SCORE_GOV = 20
 
 
 def get_stemmer():
