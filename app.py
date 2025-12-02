@@ -206,6 +206,17 @@ GOV_MANUAL_DOCS = [
     "https://vlada.gov.hr/UserDocsImages/Vijesti/2025/Studeni/20_studenoga/III._sjednica_Nacionalnog_vijeca_za_odrzivi_razvoj.pdf",
 ]
 
+# Heuristike za crnu kroniku / žuti tisak
+TABLOID_TERMS = {
+    "ubistvo", "ubojstvo", "zločin", "zlocin", "silovanje", "silovatelj", "prebijen",
+    "nesreca", "nesreća", "prometna", "prometnoj", "poginuo", "poginula", "poginuli",
+    "izgorio", "pozar", "požar", "krv", "metak", "pucnjava", "pljacka", "pljačka",
+    "krađa", "krada", "krao", "rasprava na sudu", "suđenje", "sudjenje", "diler",
+    "droga", "narkotik", "kokain", "heroina", "oruzje", "oružje", "bomb", "eksplozija",
+    "šokantno", "šokantna", "šok", "skandal", "potreseno", "navijači", "navijaci",
+    "celebrity", "showbiz", "gola", "seksi", "seks", "reality", "big brother", "ljubavnica",
+}
+
 
 def parse_list(text: str) -> List[str]:
     return [w.strip() for w in text.split(",") if w.strip()]
@@ -880,6 +891,12 @@ def render_rss_mode():
         help="Koristi za filtriranje sportskih, crne kronike, celebritija i zabave.",
     )
 
+    filter_tabloid = st.checkbox(
+        "Automatski filtriraj crnu kroniku/žuti tisak (preporučeno)",
+        value=True,
+        help="Uklanja članke s terminima tipičnim za crnu kroniku i tabloide.",
+    )
+
     media_threshold = st.number_input(
         "Minimalni score za medije",
         min_value=0,
@@ -977,6 +994,12 @@ def render_rss_mode():
 
         # Fuzzy dedup prije filtriranja pragom
         articles = deduplicate_articles(articles)
+
+        if filter_tabloid:
+            def is_tabloid(art: dict) -> bool:
+                text = (art.get("title", "") + " " + art.get("summary", "")).lower()
+                return any(term.lower() in text for term in TABLOID_TERMS)
+            articles = [a for a in articles if not is_tabloid(a)]
 
         if mode == "Dohvati svjeze iz RSS-a" and save_to_db and articles:
             try:
