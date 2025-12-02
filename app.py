@@ -782,8 +782,8 @@ def render_rss_mode():
 
     must_have_text = st.text_input(
         "Obvezne riječi (mora se pojaviti SVAKA, odvojene zarezima)",
-        value="porezna reforma, mirovinska reforma",
-        help="Ako je prazno, nijedna riječ nije obvezna.",
+        value="",
+        help="Ako je prazno, nijedna riječ nije obvezna. Koristi samo za usko ciljane članke.",
     )
 
     nice_to_have_text = st.text_input(
@@ -794,8 +794,12 @@ def render_rss_mode():
 
     exclude_text = st.text_input(
         "Isključene riječi (ako se pojave, članak se izbacuje)",
-        value="sport, nogomet, rukomet, nesreca, prometna, ubojstvo, kriminal, celebrity, showbiz, moda, lifestyle, seks",
-        help="Koristi za filtriranje sportskih, crne kronike i sličnih nerelevantnih vijesti.",
+        value=(
+            "sport, nogomet, rukomet, kosarka, tenis, nesreca, prometna, ubojstvo, "
+            "kriminal, celebrity, showbiz, moda, lifestyle, seks, trač, tračevi, "
+            "navijači, zabava"
+        ),
+        help="Koristi za filtriranje sportskih, crne kronike, celebritija i zabave.",
     )
 
     must_have_words = parse_list(must_have_text)
