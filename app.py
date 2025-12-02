@@ -24,8 +24,9 @@ from newsmonitor.utils import estimate_reading_time
 
 DB_PATH = "articles.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
-MIN_SCORE_MEDIA = 18  # minimalni score za medije
-MIN_SCORE_GOV = 23    # minimalni score za Vlada/EU izvore
+# Minimalni score pragovi (može se prilagoditi u sučelju)
+MIN_SCORE_MEDIA = 8
+MIN_SCORE_GOV = 14
 
 # Tematski profili za presscut stil praćenja vijesti.
 KEYWORD_PROFILES = {
@@ -802,6 +803,23 @@ def render_rss_mode():
         help="Koristi za filtriranje sportskih, crne kronike, celebritija i zabave.",
     )
 
+    media_threshold = st.number_input(
+        "Minimalni score za medije",
+        min_value=0,
+        max_value=50,
+        value=MIN_SCORE_MEDIA,
+        step=1,
+        help="Smanji za širi skup članaka, povećaj za stroži odabir.",
+    )
+    gov_threshold = st.number_input(
+        "Minimalni score za Vlada/EU izvore",
+        min_value=0,
+        max_value=50,
+        value=MIN_SCORE_GOV,
+        step=1,
+        help="Smanji ako želiš više službenih objava u rezultatu.",
+    )
+
     must_have_words = parse_list(must_have_text)
     nice_to_have_words = parse_list(nice_to_have_text)
     exclude_words = parse_list(exclude_text)
@@ -884,7 +902,7 @@ def render_rss_mode():
             try:
                 filtered_for_save = []
                 for a in articles:
-                    thr = MIN_SCORE_GOV if a.get("source") == "Vlada/EU" else MIN_SCORE_MEDIA
+                    thr = gov_threshold if a.get("source") == "Vlada/EU" else media_threshold
                     if a.get("score", 0) >= thr:
                         filtered_for_save.append(a)
                 save_articles_to_db(filtered_for_save)
@@ -895,7 +913,7 @@ def render_rss_mode():
         # filtriraj prema minimalnom score-u (razliciti prag za gov/medije)
         filtered = []
         for a in articles:
-            thr = MIN_SCORE_GOV if a.get("source") == "Vlada/EU" else MIN_SCORE_MEDIA
+            thr = gov_threshold if a.get("source") == "Vlada/EU" else media_threshold
             if a.get("score", 0) >= thr:
                 filtered.append(a)
         articles = filtered
